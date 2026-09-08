@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: locaguide
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - serviceaccount.yaml
+  - postgres-statefulset.yaml
+  - redis-deployment.yaml
+  - api-deployment.yaml
+  - worker-deployment.yaml
+  - ingress.yaml
+  - networkpolicy.yaml
+# secret.example.yaml is intentionally NOT listed here - apply your real
+# secret (from a vault/sealed-secret/CI-injected manifest) separately.

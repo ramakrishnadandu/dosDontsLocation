@@ -1,0 +1,26 @@
+{
+  "name": "@locaguide/worker",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "start": "node dist/index.js",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@locaguide/config": "*",
+    "@locaguide/contracts": "*",
+    "@locaguide/db": "*",
+    "@locaguide/domain": "*",
+    "@locaguide/providers": "*",
+    "@locaguide/runtime": "*",
+    "@locaguide/shared": "*",
+    "bullmq": "^5.8.5",
+    "ioredis": "^5.4.1"
+  },
+  "devDependencies": {
+    "ts-node-dev": "^2.0.0"
+  }
+}

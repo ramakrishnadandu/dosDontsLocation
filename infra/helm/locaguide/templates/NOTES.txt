@@ -1,0 +1,7 @@
+LocaGuide has been deployed.
+
+1. Populate the "{{ .Values.secretName }}" Secret with real credentials
+   (DATABASE_URL/POSTGRES_PASSWORD, REDIS_URL, JWT_SECRET, and optional
+   provider keys) before traffic is routed - see infra/kubernetes/secret.example.yaml.
+2. API: https://{{ .Values.ingress.host }}
+3. Health checks: /livez (liveness), /readyz (readiness).

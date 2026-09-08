@@ -1,0 +1,42 @@
+{
+  "name": "locaguide",
+  "private": true,
+  "version": "0.1.0",
+  "description": "LocaGuide - real-world location intelligence assistant (monorepo root)",
+  "workspaces": [
+    "packages/*",
+    "services/*"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "tsc -b --clean",
+    "lint": "eslint . --ext .ts",
+    "format": "prettier --write \"**/*.{ts,js,json,md,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{ts,js,json,md,yml,yaml}\"",
+    "test": "jest --coverage",
+    "test:watch": "jest --watch",
+    "prisma:generate": "npm run prisma:generate --workspace=@locaguide/db",
+    "prisma:migrate": "npm run prisma:migrate:dev --workspace=@locaguide/db",
+    "prisma:migrate:deploy": "npm run prisma:migrate:deploy --workspace=@locaguide/db",
+    "prisma:seed": "npm run prisma:seed --workspace=@locaguide/db",
+    "prisma:studio": "npm run prisma:studio --workspace=@locaguide/db",
+    "dev:api": "npm run dev --workspace=@locaguide/api",
+    "dev:worker": "npm run dev --workspace=@locaguide/worker"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.14.9",
+    "@typescript-eslint/eslint-plugin": "^7.16.0",
+    "@typescript-eslint/parser": "^7.16.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "jest": "^29.7.0",
+    "prettier": "^3.3.2",
+    "ts-jest": "^29.1.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.3"
+  }
+}

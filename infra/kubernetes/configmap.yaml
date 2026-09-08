@@ -1,0 +1,18 @@
+# Non-secret configuration (section 32). Real deployments should mount
+# config/ai.yaml and config/policies.yaml from this ConfigMap instead of the
+# baked-in copies in the container image, so operators can change AI/policy
+# behavior without rebuilding images.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: locaguide-config
+  namespace: locaguide
+data:
+  NODE_ENV: "production"
+  PORT: "4000"
+  LOG_LEVEL: "info"
+  CORS_ORIGINS: "https://app.locaguide.example"
+  JWT_EXPIRES_IN: "15m"
+  JWT_REFRESH_EXPIRES_IN: "30d"
+  AI_CONFIG_PATH: "./config/ai.yaml"
+  POLICY_CONFIG_PATH: "./config/policies.yaml"

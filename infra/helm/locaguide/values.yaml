@@ -1,0 +1,60 @@
+image:
+  api:
+    repository: locaguide/api
+    tag: latest
+    pullPolicy: IfNotPresent
+  worker:
+    repository: locaguide/worker
+    tag: latest
+    pullPolicy: IfNotPresent
+
+api:
+  replicaCount: 2
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { cpu: 500m, memory: 512Mi }
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+
+worker:
+  replicaCount: 2
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { cpu: 500m, memory: 512Mi }
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 8
+    targetCPUUtilizationPercentage: 70
+
+# When true, deploys the bundled Postgres/Redis (on-prem / dev use only).
+# For cloud deployments, set both to false and point externalDatabaseUrl /
+# externalRedisUrl at your managed services instead.
+postgres:
+  enabled: true
+  storage: 10Gi
+redis:
+  enabled: true
+
+externalDatabaseUrl: ""
+externalRedisUrl: ""
+
+config:
+  nodeEnv: production
+  logLevel: info
+  corsOrigins: "https://app.locaguide.example"
+
+ingress:
+  enabled: true
+  className: nginx
+  host: api.locaguide.example
+  tlsSecretName: locaguide-api-tls
+  clusterIssuer: letsencrypt-prod
+
+# Secrets are never set via values.yaml - populate the `locaguide-secrets`
+# Secret out of band (vault, sealed-secrets, CI) and reference its name here
+# if you use a different one.
+secretName: locaguide-secrets

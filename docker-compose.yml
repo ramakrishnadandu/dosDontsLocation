@@ -1,0 +1,62 @@
+# Full stack: Postgres + Redis + API + worker. Suitable for local
+# "docker compose up" evaluation and as the basis for a single-host
+# on-prem deployment (section 34). Build context is the repo root.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: locaguide
+      POSTGRES_PASSWORD: locaguide
+      POSTGRES_DB: locaguide
+    volumes:
+      - locaguide_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U locaguide"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: infra/docker/api.Dockerfile
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://locaguide:locaguide@postgres:5432/locaguide
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: infra/docker/worker.Dockerfile
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://locaguide:locaguide@postgres:5432/locaguide
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  locaguide_postgres:

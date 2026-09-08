@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: locaguide-api
+  namespace: locaguide
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/rate-limit: "60"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: ["api.locaguide.example"]
+      secretName: locaguide-api-tls
+  rules:
+    - host: api.locaguide.example
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: locaguide-api
+                port:
+                  number: 80

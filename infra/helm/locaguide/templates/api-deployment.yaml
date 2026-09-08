@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: locaguide-api
+  labels: { app: locaguide-api }
+spec:
+  replicas: {{ .Values.api.replicaCount }}
+  selector:
+    matchLabels: { app: locaguide-api }
+  template:
+    metadata:
+      labels: { app: locaguide-api }
+    spec:
+      serviceAccountName: locaguide-api
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: api
+          image: "{{ .Values.image.api.repository }}:{{ .Values.image.api.tag }}"
+          imagePullPolicy: {{ .Values.image.api.pullPolicy }}
+          ports:
+            - containerPort: 4000
+              name: http
+          envFrom:
+            - configMapRef: { name: locaguide-config }
+            - secretRef: { name: {{ .Values.secretName }} }
+          env:
+            - name: DATABASE_URL
+              value: {{ include "locaguide.databaseUrl" . | quote }}
+            - name: REDIS_URL
+              value: {{ include "locaguide.redisUrl" . | quote }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          resources: {{ toYaml .Values.api.resources | nindent 12 }}
+          livenessProbe:
+            httpGet: { path: /livez, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - { name: tmp, emptyDir: {} }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: locaguide-api
+spec:
+  selector: { app: locaguide-api }
+  ports:
+    - { port: 80, targetPort: 4000, name: http }
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: locaguide-api-pdb
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: { app: locaguide-api }
+{{- if .Values.api.autoscaling.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: locaguide-api-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: locaguide-api
+  minReplicas: {{ .Values.api.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.api.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.api.autoscaling.targetCPUUtilizationPercentage }}
+{{- end }}

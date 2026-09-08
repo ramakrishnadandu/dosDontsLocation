@@ -1,0 +1,27 @@
+{
+  "name": "@locaguide/db",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate:dev": "prisma migrate dev",
+    "prisma:migrate:deploy": "prisma migrate deploy",
+    "prisma:seed": "ts-node prisma/seed.ts",
+    "prisma:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.16.1",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "bcryptjs": "^2.4.3",
+    "prisma": "^5.16.1",
+    "ts-node": "^10.9.2"
+  },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
+  }
+}

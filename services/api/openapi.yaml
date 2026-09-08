@@ -1,0 +1,228 @@
+openapi: 3.0.3
+info:
+  title: LocaGuide API
+  version: "1"
+  description: >
+    Real-world location intelligence API. All AI-generated content is
+    returned with an evidence trail (see /locations/{id}/intelligence) and
+    is never presented as verified fact without provenance.
+servers:
+  - url: /api/v1
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            request_id:
+              type: string
+  responses:
+    Error:
+      description: Standard error envelope
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+paths:
+  /auth/register:
+    post:
+      summary: Register a new user
+      responses:
+        "201":
+          description: Tokens issued
+        "409":
+          $ref: "#/components/responses/Error"
+  /auth/login:
+    post:
+      summary: Log in
+      responses:
+        "200":
+          description: Tokens issued
+        "401":
+          $ref: "#/components/responses/Error"
+  /auth/refresh:
+    post:
+      summary: Exchange a refresh token for a new access token
+      responses:
+        "200":
+          description: New tokens issued
+  /users/me:
+    get:
+      summary: Get the current user's profile
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: User profile
+  /users/me/preferences:
+    get:
+      summary: Get personalization preferences (section 11)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Preferences
+    put:
+      summary: Update personalization preferences
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Updated preferences
+    delete:
+      summary: Reset personalization preferences
+      security: [{ bearerAuth: [] }]
+      responses:
+        "204":
+          description: Deleted
+  /users/me/export:
+    get:
+      summary: Export the current user's data (section 18)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Data export document
+  /locations/nearby:
+    get:
+      summary: Find nearby entities by GPS position (section 13/14)
+      parameters:
+        - { name: lat, in: query, required: true, schema: { type: number } }
+        - { name: lng, in: query, required: true, schema: { type: number } }
+        - { name: radiusMeters, in: query, schema: { type: number } }
+        - { name: category, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: Nearby entities
+  /locations/search:
+    get:
+      summary: Search for a location by name/address/category (section 12)
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Matching entities
+  /locations/{id}:
+    get:
+      summary: Get full details for one entity
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Location entity
+        "404":
+          $ref: "#/components/responses/Error"
+  /locations/{id}/intelligence:
+    get:
+      summary: >
+        Generate the evidence-based briefing (DO/CONSIDER/WATCH/MUST_SEE/
+        SPENDING/GENERAL_TIPS/HEALTH_AWARE) for one entity (section 3/43).
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Evidence-backed briefing
+  /locations/{id}/reviews/signals:
+    get:
+      summary: Aggregated review-aspect signals for one entity (section 7)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: timeWindow, in: query, schema: { type: string, enum: [recent, quarter, year, all_time] } }
+      responses:
+        "200":
+          description: Aspect signals
+  /locations/{id}/community:
+    get:
+      summary: List approved community opinions for one entity
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Paginated community opinions
+  /community/opinions:
+    post:
+      summary: Submit a community opinion (section 4)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201":
+          description: Created opinion
+  /community/votes:
+    post:
+      summary: Vote helpful/not-helpful/report on an opinion (section 6)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "204":
+          description: Vote recorded
+  /community/check-ins:
+    post:
+      summary: "\"I was here\" check-in (section 5)"
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201":
+          description: Check-in recorded
+  /products/search:
+    get:
+      summary: Search products (section 15)
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Matching products
+  /products/{id}:
+    get:
+      summary: Get product details
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Product
+  /products/{id}/deals:
+    get:
+      summary: Active deals for a product (section 16)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Active deals only - expired deals are never returned
+  /admin/moderation/cases:
+    get:
+      summary: Moderation queue (section 17/20)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Moderation cases
+  /admin/reports:
+    get:
+      summary: User-submitted content reports
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Reports
+  /admin/audit-logs:
+    get:
+      summary: Security-sensitive audit log (section 22)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Audit log entries
+  /admin/feature-flags:
+    get:
+      summary: List feature flags (section 21)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Feature flags
+  /admin/users:
+    get:
+      summary: List users (admin only)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Users

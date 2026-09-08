@@ -1,0 +1,44 @@
+{
+  "name": "@locaguide/api",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "start": "node dist/index.js",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@locaguide/config": "*",
+    "@locaguide/contracts": "*",
+    "@locaguide/db": "*",
+    "@locaguide/domain": "*",
+    "@locaguide/providers": "*",
+    "@locaguide/runtime": "*",
+    "@locaguide/shared": "*",
+    "bcryptjs": "^2.4.3",
+    "bullmq": "^5.8.5",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.3.1",
+    "helmet": "^7.1.0",
+    "ioredis": "^5.4.1",
+    "jsonwebtoken": "^9.0.2",
+    "pino-http": "^10.2.0",
+    "swagger-ui-express": "^5.0.1",
+    "yamljs": "^0.3.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.6",
+    "@types/supertest": "^6.0.2",
+    "@types/swagger-ui-express": "^4.1.6",
+    "@types/yamljs": "^0.2.34",
+    "supertest": "^7.0.0",
+    "ts-node-dev": "^2.0.0"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/shared" },
+    { "path": "packages/config" },
+    { "path": "packages/contracts" },
+    { "path": "packages/db" },
+    { "path": "packages/providers" },
+    { "path": "packages/domain" },
+    { "path": "packages/runtime" },
+    { "path": "services/api" },
+    { "path": "services/worker" }
+  ]
+}

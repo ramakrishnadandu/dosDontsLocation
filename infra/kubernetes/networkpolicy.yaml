@@ -1,0 +1,104 @@
+# Default-deny with explicit allows (section 19 - Network policies).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: locaguide
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress", "Egress"]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-api-ingress
+  namespace: locaguide
+spec:
+  podSelector:
+    matchLabels:
+      app: locaguide-api
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - namespaceSelector: {}
+      ports:
+        - port: 4000
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-api-and-worker-egress-to-db-and-cache
+  namespace: locaguide
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app
+        operator: In
+        values: ["locaguide-api", "locaguide-worker"]
+  policyTypes: ["Egress"]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: postgres
+      ports:
+        - port: 5432
+    - to:
+        - podSelector:
+            matchLabels:
+              app: redis
+      ports:
+        - port: 6379
+    # DNS
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - port: 53
+          protocol: UDP
+    # HTTPS egress to external providers (Google/OpenAI/Anthropic/etc) - only
+    # needed when real provider credentials are configured.
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - port: 443
+          protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-postgres-ingress-from-app
+  namespace: locaguide
+spec:
+  podSelector:
+    matchLabels:
+      app: postgres
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - podSelector:
+            matchExpressions:
+              - key: app
+                operator: In
+                values: ["locaguide-api", "locaguide-worker"]
+      ports:
+        - port: 5432
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-redis-ingress-from-app
+  namespace: locaguide
+spec:
+  podSelector:
+    matchLabels:
+      app: redis
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - podSelector:
+            matchExpressions:
+              - key: app
+                operator: In
+                values: ["locaguide-api", "locaguide-worker"]
+      ports:
+        - port: 6379

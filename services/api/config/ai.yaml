@@ -1,0 +1,32 @@
+# AI model routing configuration (section 10). Change providers/models here
+# without touching application code. "mock" is always available and is
+# always appended as the final fallback by AIRouter, so the product never
+# hard-fails a briefing request even if this file is misconfigured.
+ai:
+  # Preferred order is ollama -> openai -> mock. Ollama is first because
+  # it's a real, free, locally-running open-source model (see
+  # docs/ai-architecture.md#local-open-source-model) - no API key needed,
+  # nothing leaves the machine. AIRouter automatically skips any provider
+  # that isn't reachable/configured, so this file does not need to change
+  # between "just Ollama installed", "OpenAI key added", and demo-only
+  # environments - it always degrades safely to mock.
+  default_provider: ollama
+  default_model: llama3.2:3b
+  fallback_provider: openai
+  fallback_model: gpt-4o-mini
+  rate_limit_per_minute: 60
+  allowed_providers:
+    - mock
+    - ollama
+    - openai
+    - anthropic
+  allowed_models:
+    - mock-v1
+    - llama3.2:3b
+    - gpt-4o-mini
+    - claude-haiku-4-5-20251001
+  policy:
+    max_tokens: 512
+    timeout_ms: 20000
+    retries: 1
+    temperature: 0.2

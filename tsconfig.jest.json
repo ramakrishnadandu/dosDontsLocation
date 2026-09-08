@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@locaguide/shared": ["packages/shared/src/index.ts"],
+      "@locaguide/config": ["packages/config/src/index.ts"],
+      "@locaguide/contracts": ["packages/contracts/src/index.ts"],
+      "@locaguide/db": ["packages/db/src/index.ts"],
+      "@locaguide/providers": ["packages/providers/src/index.ts"],
+      "@locaguide/domain": ["packages/domain/src/index.ts"],
+      "@locaguide/runtime": ["packages/runtime/src/index.ts"]
+    }
+  }
+}

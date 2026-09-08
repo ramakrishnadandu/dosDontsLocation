@@ -1,0 +1,38 @@
+# Policy Engine configuration (section 21). Operators (including future
+# on-prem/enterprise tenants) control behavior here without code changes.
+providers:
+  location:
+    - mock
+    - google_places
+  reviews:
+    - mock
+    - community
+    - google_places_reviews
+  products:
+    - mock
+    - amazon
+  ai:
+    - mock
+    - ollama
+    - openai
+    - anthropic
+
+data_retention:
+  # Precise GPS history is never retained (section 5/18) - only coarse
+  # visit-recency buckets via CheckIn.
+  precise_location_history_days: 0
+  ai_request_log_days: 90
+  audit_log_days: 365
+
+moderation:
+  auto_hide_spam_score_threshold: 0.9
+  auto_hide_on_report_count: 5
+  require_manual_review_for_media: true
+
+geo_restrictions:
+  blocked_country_codes: []
+
+features:
+  travel_mode: false
+  location_agent: false
+  multi_tenant: false

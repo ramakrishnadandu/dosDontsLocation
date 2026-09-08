@@ -1,0 +1,4 @@
+region                     = "us-east-1"
+vpc_id                     = "vpc-CHANGE_ME"
+private_subnet_ids         = ["subnet-CHANGE_ME_A", "subnet-CHANGE_ME_B"]
+allowed_security_group_ids = ["sg-CHANGE_ME_EKS_NODES"]

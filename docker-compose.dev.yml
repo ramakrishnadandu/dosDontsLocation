@@ -1,0 +1,32 @@
+# Local development: only infrastructure (Postgres + Redis). Run the API
+# and worker directly on the host with `npm run dev:api` / `npm run dev:worker`
+# so you get fast reload without rebuilding containers.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: locaguide
+      POSTGRES_PASSWORD: locaguide
+      POSTGRES_DB: locaguide
+    ports:
+      - "5432:5432"
+    volumes:
+      - locaguide_postgres_dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U locaguide"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  locaguide_postgres_dev:

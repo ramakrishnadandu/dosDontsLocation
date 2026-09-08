@@ -1,0 +1,33 @@
+name: locaguide
+description: LocaGuide - real-world location intelligence assistant.
+publish_to: "none"
+version: 0.1.0
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+  # Verified against Flutter 3.41.7 (stable). withValues() (Color) requires
+  # a reasonably recent Flutter - raise this if you hit resolution issues
+  # on an older SDK, but this app has only been tested on 3.41.7.
+  flutter: ">=3.27.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: ^0.20.2
+  http: ^1.2.1
+  provider: ^6.1.2
+  shared_preferences: ^2.2.3
+  geolocator: ^12.0.0
+  share_plus: ^10.0.0
+  url_launcher: ^6.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  generate: true

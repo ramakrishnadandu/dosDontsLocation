@@ -1,0 +1,36 @@
+node_modules/
+dist/
+build/
+coverage/
+.env
+.env.local
+*.log
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Prisma
+services/api/generated/
+
+# Flutter
+apps/mobile/.dart_tool/
+apps/mobile/.flutter-plugins
+apps/mobile/.flutter-plugins-dependencies
+apps/mobile/.packages
+apps/mobile/build/
+apps/mobile/.pub-cache/
+apps/mobile/.pub/
+apps/mobile/ios/Pods/
+apps/mobile/ios/.symlinks/
+apps/mobile/android/.gradle/
+apps/mobile/**/GeneratedPluginRegistrant.*
+
+# Terraform
+infra/terraform/**/.terraform/
+infra/terraform/**/*.tfstate
+infra/terraform/**/*.tfstate.backup
+infra/terraform/**/.terraform.lock.hcl
+
+# Kubernetes local secrets
+infra/kubernetes/**/secrets.local.yaml

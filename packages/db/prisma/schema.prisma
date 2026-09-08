@@ -1,0 +1,665 @@
+// LocaGuide primary relational schema (PostgreSQL).
+// See docs/database.md for table-by-table notes and data-classification tags.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  MODERATOR
+  ANALYST
+  SUPPORT
+  USER
+}
+
+enum BudgetLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum EntityCategory {
+  SHOPPING_MALL
+  MARKET
+  HOTEL
+  RESTAURANT
+  BANK
+  HOSPITAL
+  TOURIST_ATTRACTION
+  STORE
+  PHARMACY
+  AIRPORT
+  RAILWAY_STATION
+  CINEMA
+  ENTERTAINMENT_VENUE
+  UNIVERSITY
+  OFFICE
+  PUBLIC_PLACE
+  OTHER
+}
+
+enum Sentiment {
+  POSITIVE
+  NEGATIVE
+  NEUTRAL
+}
+
+enum ReviewAspect {
+  PARKING
+  CLEANLINESS
+  STAFF
+  FOOD
+  PRICE
+  SERVICE
+  CROWDING
+  NOISE
+  LOCATION
+  ROOMS
+  ACCESSIBILITY
+  WAITING_TIME
+  SAFETY
+  AMBIENCE
+}
+
+enum TimeWindow {
+  recent
+  quarter
+  year
+  all_time
+}
+
+enum VisitRecency {
+  TODAY
+  THIS_WEEK
+  EARLIER
+}
+
+enum OpinionStatus {
+  ACTIVE
+  EDITED
+  REMOVED
+}
+
+enum ModerationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  AUTO_HIDDEN
+  APPEALED
+}
+
+enum VoteType {
+  HELPFUL
+  NOT_HELPFUL
+  REPORT
+}
+
+enum ProductAvailability {
+  IN_STOCK
+  OUT_OF_STOCK
+  LIMITED
+  UNKNOWN
+}
+
+enum EvidenceType {
+  FACT
+  REVIEW_SIGNAL
+  COMMUNITY_OPINION
+  AI_INTERPRETATION
+}
+
+enum RecommendationCategory {
+  DO
+  CONSIDER
+  WATCH
+  MUST_SEE
+  SPENDING
+  PRODUCTS
+  GENERAL_TIPS
+  HEALTH_AWARE
+}
+
+enum ReportTargetType {
+  COMMUNITY_OPINION
+  MEDIA
+  PRODUCT_REVIEW
+  USER
+}
+
+enum ReportStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
+}
+
+enum ModerationCaseStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED_APPROVED
+  RESOLVED_REJECTED
+  APPEALED
+}
+
+enum AuditAction {
+  LOGIN
+  LOGOUT
+  ROLE_CHANGE
+  ADMIN_ACTION
+  MODERATION_ACTION
+  PROVIDER_CONFIG_CHANGE
+  AI_CONFIG_CHANGE
+  POLICY_CHANGE
+  DATA_DELETION
+  DATA_EXPORT
+  SECURITY_EVENT
+}
+
+enum AuditResult {
+  SUCCESS
+  FAILURE
+}
+
+// ---------------------------------------------------------------------------
+// Identity
+// ---------------------------------------------------------------------------
+
+/// Data classification: PRIVATE (passwordHash is SECRET-adjacent, never logged)
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  displayName  String
+  role         Role     @default(USER)
+  tenantId     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+
+  preference       Preference?
+  communityOpinions CommunityOpinion[]
+  communityVotes   CommunityVote[]
+  media            Media[]
+  reports          Report[]
+  auditLogs        AuditLog[]
+  refreshTokens    RefreshToken[]
+  checkIns         CheckIn[]
+  savedLocations   SavedLocation[]
+
+  @@map("users")
+}
+
+/// Data classification: SECRET
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+  revokedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+/// Data classification: PRIVATE
+model Preference {
+  userId                    String   @id
+  budgetLevel               BudgetLevel?
+  travelingWithFamily       Boolean?
+  interests                 String[] @default([])
+  accessibilityRequirements String[] @default([])
+  dietaryPreferences        String[] @default([])
+  preferredLanguage         String   @default("en")
+  updatedAt                 DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("preferences")
+}
+
+// ---------------------------------------------------------------------------
+// Locations / entities
+// ---------------------------------------------------------------------------
+
+/// Canonical cache of a real-world entity resolved via a LocationProvider.
+/// Data classification: PUBLIC (name/category/address); the `raw` snapshot
+/// must not contain end-user personal data.
+model Entity {
+  id               String         @id
+  tenantId         String?
+  name             String
+  category         EntityCategory
+  address          String?
+  latitude         Float
+  longitude        Float
+  sourceProvider   String
+  sourceProviderId String
+  isDemoData       Boolean        @default(false)
+  raw              Json
+  fetchedAt        DateTime
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  reviews           ReviewRecord[]
+  reviewAspects     ReviewAspectRecord[]
+  communityOpinions CommunityOpinion[]
+  recommendations   Recommendation[]
+  evidence          Evidence[]
+  checkIns          CheckIn[]
+  savedLocations    SavedLocation[]
+
+  @@index([category])
+  @@index([tenantId])
+  @@map("entities")
+}
+
+/// Section 48 (Favorites/Saved Locations) + user-provided "interested"
+/// places. A saved location can point at a known Entity (favorited from
+/// search/details) OR be a freeform place the user added by pasting a
+/// Google Maps link/address - in the latter case entityId is null and
+/// name/latitude/longitude are populated from parsing sourceUrl where
+/// possible (see packages/domain/src/googleMaps/parseGoogleMapsUrl.ts).
+/// Data classification: PRIVATE
+model SavedLocation {
+  id        String   @id @default(uuid())
+  userId    String
+  entityId  String?
+  label     String
+  note      String?
+  sourceUrl String?
+  latitude  Float?
+  longitude Float?
+  createdAt DateTime @default(now())
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entity Entity? @relation(fields: [entityId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@map("saved_locations")
+}
+
+/// Data classification: PUBLIC (aggregate signal only; raw text may include
+/// third-party reviewer text - treat as INTERNAL, never re-exposed verbatim
+/// beyond what the source provider's terms allow).
+model ReviewRecord {
+  id                  String    @id @default(uuid())
+  entityId            String
+  sourceProvider      String
+  sourceReviewId      String
+  authorDisplayName   String?
+  rating              Float?
+  text                String
+  language            String?
+  isSpam              Boolean   @default(false)
+  isDuplicate         Boolean   @default(false)
+  duplicateOfReviewId String?
+  overallSentiment    Sentiment?
+  publishedAt         DateTime
+  analyzedAt          DateTime?
+  createdAt           DateTime  @default(now())
+
+  entity Entity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceProvider, sourceReviewId])
+  @@index([entityId])
+  @@map("reviews")
+}
+
+/// Data classification: PUBLIC (aggregated, no individual reviewer identity)
+model ReviewAspectRecord {
+  id                String     @id @default(uuid())
+  entityId          String
+  aspect            ReviewAspect
+  positiveMentions  Int
+  negativeMentions  Int
+  neutralMentions   Int
+  totalMentions     Int
+  timeWindow        TimeWindow
+  confidence        Float
+  computedAt        DateTime
+
+  entity Entity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+
+  @@index([entityId, aspect, timeWindow])
+  @@map("review_aspects")
+}
+
+// ---------------------------------------------------------------------------
+// Community
+// ---------------------------------------------------------------------------
+
+/// Data classification: PRIVATE (linked to userId); public projection strips
+/// userId/moderation fields - see services/api DTOs.
+model CommunityOpinion {
+  id                 String            @id @default(uuid())
+  userId             String
+  entityId           String
+  rating             Int
+  title              String?
+  body               String?
+  pros               String[]          @default([])
+  cons               String[]          @default([])
+  tips               String[]          @default([])
+  valueForMoney      Int?
+  cleanliness        Int?
+  parking            Int?
+  accessibility      Int?
+  familyFriendliness Int?
+  foodExperience     Int?
+  shoppingExperience Int?
+  serviceExperience  Int?
+  safetyAwareness    String?
+  visitRecency       VisitRecency?
+  verifiedVisit      Boolean           @default(false)
+  helpfulCount       Int               @default(0)
+  reportCount        Int               @default(0)
+  status             OpinionStatus     @default(ACTIVE)
+  moderationStatus   ModerationStatus  @default(APPROVED)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  editedAt           DateTime?
+
+  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entity Entity   @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  media  Media[]
+  votes  CommunityVote[]
+
+  @@index([entityId, status, moderationStatus])
+  @@index([userId])
+  @@map("community_opinions")
+}
+
+/// Data classification: PRIVATE
+model CommunityVote {
+  id           String    @id @default(uuid())
+  userId       String
+  opinionId    String
+  voteType     VoteType
+  reportReason String?
+  createdAt    DateTime  @default(now())
+
+  user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  opinion CommunityOpinion @relation(fields: [opinionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, opinionId, voteType])
+  @@index([opinionId])
+  @@map("community_votes")
+}
+
+/// "I was here" check-in. Deliberately does NOT store precise coordinates -
+/// only a coarse visit-recency bucket - per section 5/18 (privacy-preserving
+/// signal, minimal retention).
+model CheckIn {
+  id           String       @id @default(uuid())
+  userId       String
+  entityId     String
+  visitRecency VisitRecency
+  createdAt    DateTime     @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entity Entity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+
+  @@index([entityId])
+  @@index([userId])
+  @@map("check_ins")
+}
+
+/// Data classification: PRIVATE (may contain user-uploaded photos/videos)
+model Media {
+  id               String           @id @default(uuid())
+  uploaderUserId   String
+  opinionId        String?
+  mimeType         String
+  sizeBytes        Int
+  storageKey       String
+  moderationStatus ModerationStatus @default(PENDING)
+  createdAt        DateTime         @default(now())
+
+  uploader User              @relation(fields: [uploaderUserId], references: [id], onDelete: Cascade)
+  opinion  CommunityOpinion? @relation(fields: [opinionId], references: [id], onDelete: SetNull)
+
+  @@map("media")
+}
+
+// ---------------------------------------------------------------------------
+// Products / deals
+// ---------------------------------------------------------------------------
+
+/// Data classification: PUBLIC
+model Product {
+  id                String              @id
+  title             String
+  brand             String?
+  category          String
+  price             Float?
+  currency          String?
+  rating            Float?
+  reviewCount       Int?
+  availability      ProductAvailability @default(UNKNOWN)
+  seller            String?
+  source            String
+  sourceProductId   String
+  warranty          String?
+  returnInformation String?
+  isDemoData        Boolean             @default(false)
+  fetchedAt         DateTime
+  createdAt         DateTime            @default(now())
+
+  productReviews ProductReview[]
+  deals          Deal[]
+
+  @@unique([source, sourceProductId])
+  @@map("products")
+}
+
+/// Data classification: PRIVATE (linked to userId, nullable for imported reviews)
+model ProductReview {
+  id                    String   @id @default(uuid())
+  productId             String
+  userId                String?
+  quality               Int?
+  value                 Int?
+  durability            Int?
+  pros                  String[] @default([])
+  cons                  String[] @default([])
+  body                  String?
+  wouldBuyAgain         Boolean?
+  alternativeSuggestion String?
+  createdAt             DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("product_reviews")
+}
+
+/// Data classification: PUBLIC
+model Deal {
+  id              String   @id @default(uuid())
+  productId       String
+  merchant        String
+  price           Float
+  originalPrice   Float?
+  discountPercent Float?
+  currency        String
+  validFrom       DateTime
+  validUntil      DateTime
+  source          String
+  verifiedAt      DateTime
+  createdAt       DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, validUntil])
+  @@map("deals")
+}
+
+// ---------------------------------------------------------------------------
+// Recommendations / evidence / AI
+// ---------------------------------------------------------------------------
+
+/// Groups a batch of Evidence rows generated together for one entity/user.
+/// Data classification: INTERNAL
+model Recommendation {
+  id          String    @id @default(uuid())
+  entityId    String
+  userId      String?
+  generatedAt DateTime  @default(now())
+  expiresAt   DateTime?
+
+  entity   Entity     @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  evidence Evidence[]
+
+  @@index([entityId])
+  @@map("recommendations")
+}
+
+/// Data classification: PUBLIC (never contains raw PII; see Evidence contract)
+model Evidence {
+  id                     String                 @id @default(uuid())
+  recommendationId       String?
+  entityId               String
+  category               RecommendationCategory
+  recommendation         String
+  type                   EvidenceType
+  reason                 String
+  sources                Json
+  confidence             Float
+  generatedAt            DateTime
+  expiresAt              DateTime?
+  modelVersion           String?
+  promptTemplateVersion  String?
+  createdAt              DateTime               @default(now())
+
+  entity         Entity          @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  recommendation_ Recommendation? @relation(fields: [recommendationId], references: [id], onDelete: SetNull)
+
+  @@index([entityId, category])
+  @@map("evidence")
+}
+
+/// Data classification: INTERNAL (cost/token tracking; no raw user prompt text stored)
+model AIRequest {
+  id                  String   @id @default(uuid())
+  provider             String
+  model                String
+  requestPurpose       String
+  userId               String?
+  entityId             String?
+  promptTemplateVersion String?
+  createdAt            DateTime @default(now())
+
+  response AIResponse?
+
+  @@index([provider, createdAt])
+  @@map("ai_requests")
+}
+
+/// Data classification: INTERNAL
+model AIResponse {
+  id               String   @id @default(uuid())
+  requestId        String   @unique
+  tokensPrompt     Int
+  tokensCompletion Int
+  latencyMs        Int
+  succeeded        Boolean
+  errorMessage     String?
+  createdAt        DateTime @default(now())
+
+  request AIRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@map("ai_responses")
+}
+
+// ---------------------------------------------------------------------------
+// Moderation / reports / audit / admin
+// ---------------------------------------------------------------------------
+
+/// Data classification: PRIVATE (reporterUserId)
+model Report {
+  id             String           @id @default(uuid())
+  reporterUserId String
+  targetType     ReportTargetType
+  targetId       String
+  reason         String
+  status         ReportStatus     @default(OPEN)
+  createdAt      DateTime         @default(now())
+  resolvedAt     DateTime?
+
+  reporter User @relation(fields: [reporterUserId], references: [id], onDelete: Cascade)
+
+  @@index([targetType, targetId])
+  @@map("reports")
+}
+
+/// Data classification: INTERNAL
+model ModerationCase {
+  id                  String               @id @default(uuid())
+  targetType          ReportTargetType
+  targetId            String
+  status              ModerationCaseStatus @default(OPEN)
+  spamScore           Float?
+  signals             Json?
+  assignedModeratorId String?
+  resolution          String?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  @@index([targetType, targetId])
+  @@index([status])
+  @@map("moderation_cases")
+}
+
+/// Data classification: INTERNAL. Never store secrets/tokens/raw sensitive
+/// payloads here - only the fields listed in section 22 of the spec.
+model AuditLog {
+  id            String      @id @default(uuid())
+  timestamp     DateTime    @default(now())
+  actorId       String?
+  action        AuditAction
+  resource      String
+  result        AuditResult
+  requestId     String
+  correlationId String
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([action, timestamp])
+  @@index([actorId])
+  @@map("audit_logs")
+}
+
+/// Data classification: INTERNAL
+model FeatureFlag {
+  key         String   @id
+  enabled     Boolean  @default(false)
+  description String?
+  updatedAt   DateTime @updatedAt
+
+  @@map("feature_flags")
+}
+
+/// Data classification: INTERNAL. Free-form policy documents (see
+/// packages/config PolicyConfig) that can also be persisted/edited via the
+/// admin console rather than only via config/policies.yaml.
+model Policy {
+  key       String   @id
+  valueJson Json
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  @@map("policies")
+}
